@@ -19,6 +19,8 @@
       }
     ],
     "paths": {
+      "@/lib/*": ["./data/scripts/*"],
+      "@/components/*": ["./app/pages/components/*"],
       "@/*": ["./*"]
     }
   },

@@ -1,6 +1,5 @@
 "use client"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 
@@ -9,7 +8,12 @@ export default function LoginPage() {
   const [pwd, setPwd] = useState("")
   const [err, setErr] = useState("")
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
+
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data: { user } }) => {
+      if (user) window.location.href = "/pages/overview"
+    })
+  }, [])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -24,8 +28,7 @@ export default function LoginPage() {
       else if (m.includes("rate")) setErr("Too many attempts - please wait")
       else setErr(error.message)
     } else {
-      router.push("/overview")
-      router.refresh()
+      window.location.href = "/pages/overview"
     }
   }
 

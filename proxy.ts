@@ -21,15 +21,15 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
   const p = request.nextUrl.pathname
-  const PROTECTED = ["/overview", "/ai-agent", "/business-profile", "/news"]
+  const PROTECTED = ["/pages/overview", "/pages/ai-agent", "/pages/business-profile"]
   const AUTH_ONLY = ["/login", "/register"]
   if (PROTECTED.some((r) => p.startsWith(r)) && !user)
     return NextResponse.redirect(new URL("/login", request.url))
   if (AUTH_ONLY.some((r) => p.startsWith(r)) && user)
-    return NextResponse.redirect(new URL("/overview", request.url))
+    return NextResponse.redirect(new URL("/pages/overview", request.url))
   return response
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: ["/pages/:path*", "/login", "/register"],
 }

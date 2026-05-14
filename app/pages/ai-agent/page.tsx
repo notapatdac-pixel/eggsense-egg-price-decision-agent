@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { loadHistory, getAiProfile, getLatestEggPrice, db } from "@/lib/db"
 import { PageHeader } from "@/components/PageHeader"
 import DashboardShell from "@/components/DashboardShell"
-import AgentPage from "@/app/pages/AgentPage"
+import AgentPage from "./AgentPage"
 import type { AgentSignal, Grade } from "@/lib/types"
 
 export default async function AiAgent() {

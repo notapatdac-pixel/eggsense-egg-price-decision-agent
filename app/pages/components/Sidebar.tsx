@@ -6,9 +6,9 @@ import { LayoutDashboard, Bot, BarChart2, LogOut } from "lucide-react"
 import clsx from "clsx"
 
 const NAV = [
-  { label: "Overview", href: "/overview", icon: LayoutDashboard },
-  { label: "AI Agent", href: "/ai-agent", icon: Bot },
-  { label: "Business Profile", href: "/business-profile", icon: BarChart2 },
+  { label: "Overview", href: "/pages/overview", icon: LayoutDashboard },
+  { label: "AI Agent", href: "/pages/ai-agent", icon: Bot },
+  { label: "Business Profile", href: "/pages/business-profile", icon: BarChart2 },
 ]
 
 export default function Sidebar({ email }: { email: string }) {

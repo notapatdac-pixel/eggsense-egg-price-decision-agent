@@ -8,33 +8,46 @@ AI-powered egg price intelligence platform for Thai food businesses. Provides re
 
 ```
 eggsense-egg-price-decision-agent/
-├── agent/                        ← core agent code
-│   ├── main.ts                   ← entry point: runAgentTurn()
+├── agent/                             ← core agent code
+│   ├── main.ts                        ← entry point: runAgentTurn()
 │   ├── tools/
-│   │   ├── forecast.ts           ← computeForecast(), generateSignal()
-│   │   └── rag.ts                ← embedText(), retrieveContext(), embedDailyPrices()
+│   │   ├── tool-definitions.ts        ← Gemini FunctionDeclaration[] array
+│   │   ├── price-forecaster.ts        ← computeForecast(), generateSignal()
+│   │   └── knowledge-retriever.ts     ← embedText(), retrieveContext(), embedDailyPrices()
 │   └── prompts/
-│       └── system.ts             ← buildPrompt() system prompt builder
-├── app/                          ← Next.js 16 App Router (UI + API)
-│   ├── (auth)/login|register     ← Supabase Auth pages
-│   ├── (dashboard)/              ← Protected pages layout
-│   ├── api/agent/                ← POST /api/agent — agent chat endpoint
-│   ├── api/forecast/             ← GET  /api/forecast — price forecast
-│   ├── api/prices/               ← GET  /api/prices — live grade prices
-│   ├── api/news/                 ← GET  /api/news — market news
-│   └── api/cron/                 ← 6 daily cron jobs (oil/weather/eggs/feed/disease/embed)
-├── components/                   ← UI components (charts, cards, sidebar)
+│       └── egg-advisor-prompt.ts      ← buildPrompt() system prompt builder
+├── app/                               ← Next.js 16 App Router (UI + API)
+│   ├── login/ | register/             ← Supabase Auth pages
+│   ├── overview/ | ai-agent/ | business-profile/  ← Protected dashboard pages
+│   ├── pages/                         ← Client components (OverviewPage, ProfilePage, etc.)
+│   ├── api/agent/                     ← POST /api/agent — agent chat endpoint
+│   ├── api/forecast/                  ← GET  /api/forecast — price forecast
+│   ├── api/prices/                    ← GET  /api/prices — live grade prices
+│   ├── api/news/                      ← GET  /api/news — market news
+│   └── api/cron/                      ← 6 daily cron jobs (oil/weather/eggs/feed/disease/embed)
+├── components/                        ← UI components (charts, cards, sidebar)
 ├── lib/
-│   ├── types.ts                  ← shared TypeScript types
-│   ├── db.ts                     ← Supabase service client + all DB functions
-│   └── supabase/                 ← Supabase SSR client (client.ts + server.ts)
+│   ├── types.ts                       ← shared TypeScript types
+│   ├── db/                            ← Supabase service client (domain modules)
+│   │   ├── index.ts                   ← barrel re-exports (all "@/lib/db" imports resolve here)
+│   │   ├── client.ts                  ← db(), today(), ago() helpers
+│   │   ├── prices.ts                  ← egg price functions
+│   │   ├── oil.ts                     ← oil price functions
+│   │   ├── profile.ts                 ← user & AI profile functions
+│   │   ├── conversations.ts           ← loadHistory(), saveMsg()
+│   │   ├── signals.ts                 ← saveSignal()
+│   │   ├── news.ts                    ← getCachedNews(), saveNewsCache()
+│   │   ├── forecast-cache.ts          ← getCachedForecast(), saveForecastCache()
+│   │   ├── cron.ts                    ← logCron()
+│   │   └── alerts.ts                  ← checkAlerts()
+│   └── supabase/                      ← Supabase SSR client (client.ts + server.ts)
 ├── data/
-│   ├── raw/                      ← source datasets
-│   └── scripts/                  ← data fetch / generation scripts
+│   ├── raw/                           ← source datasets
+│   └── scripts/                       ← data fetch / generation scripts
 ├── docs/
-│   └── architecture.md           ← this file
-├── notebooks/                    ← EDA / prototyping notebooks
-└── proxy.ts                      ← Next.js 16 auth proxy (replaces middleware.ts)
+│   └── architecture.md                ← this file
+├── notebooks/                         ← EDA / prototyping notebooks
+└── proxy.ts                           ← Next.js 16 auth proxy (replaces middleware.ts)
 ```
 
 ## Agent Flow
@@ -55,7 +68,7 @@ runAgentTurn()  [agent/main.ts]
     ├── buildPrompt()      ← system prompt + progressive profiling state
     ├── Gemini 2.5 Flash   ← with function calling (5 tool rounds max)
     │   ├── get_current_prices   → getLatestEggPrice() / getAllGradesLatest()
-    │   ├── get_price_forecast   → computeForecast() [agent/tools/forecast.ts]
+    │   ├── get_price_forecast   → computeForecast() [agent/tools/price-forecaster.ts]
     │   ├── get_market_news      → getCachedNews()
     │   ├── calculate_inventory  → inline calculation
     │   └── get_market_context   → getContextFactors()
@@ -96,7 +109,7 @@ Linear regression (least squares) on 60-day price history, with additive adjustm
 ## Tech Stack
 
 - **Framework**: Next.js 16 App Router + TypeScript
-- **Styling**: Tailwind CSS v4 + DM Sans
+- **Styling**: Tailwind CSS v4 + DM Sans (next/font/google)
 - **Charts**: Recharts (ComposedChart)
 - **Database**: Supabase PostgreSQL + pgvector
 - **Auth**: Supabase Auth (email/password)

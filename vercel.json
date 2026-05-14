@@ -5,6 +5,8 @@
     { "path": "/api/cron/eggs", "schedule": "0 18 * * *" },
     { "path": "/api/cron/feedcosts", "schedule": "30 18 * * *" },
     { "path": "/api/cron/disease", "schedule": "0 19 * * *" },
-    { "path": "/api/cron/embed", "schedule": "30 19 * * *" }
+    { "path": "/api/cron/embed", "schedule": "30 19 * * *" },
+    { "path": "/api/cron/news", "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/accuracy", "schedule": "0 20 * * *" }
   ]
 }

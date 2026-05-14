@@ -18,12 +18,11 @@ export default function OverviewPage({ grades }: { grades: GradePrice[] }) {
   const [newsLoading, setNewsLoading] = useState(true)
   const today = new Date().toISOString().split("T")[0]
 
-  // Fetch chart data when grade changes
   useEffect(() => {
     setChartLoading(true)
     Promise.all([
       fetch(`/api/prices?grade=${activeGrade}&days=60`).then((r) => r.json()),
-      fetch(`/api/forecast?grade=${activeGrade}`).then((r) => r.json()),
+      fetch(`/api/forecast?grade=${activeGrade}&raw=1`).then((r) => r.json()),
     ])
       .then(([prices, fc]) => {
         setHistorical(prices.history ?? [])
@@ -33,7 +32,6 @@ export default function OverviewPage({ grades }: { grades: GradePrice[] }) {
       .finally(() => setChartLoading(false))
   }, [activeGrade])
 
-  // Fetch 12 news items once; show 4 initially with Load More
   useEffect(() => {
     setNewsLoading(true)
     fetch("/api/news?type=general&limit=12")
@@ -45,7 +43,6 @@ export default function OverviewPage({ grades }: { grades: GradePrice[] }) {
 
   return (
     <div className="space-y-5">
-      {/* Grade cards */}
       <div className="grid grid-cols-6 gap-3">
         {grades.map((g) => (
           <button
@@ -58,7 +55,6 @@ export default function OverviewPage({ grades }: { grades: GradePrice[] }) {
         ))}
       </div>
 
-      {/* Price chart */}
       <div className="card p-5">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-[16px] font-bold text-[#1A1A1A]">Price History & Forecast</h3>
@@ -93,7 +89,6 @@ export default function OverviewPage({ grades }: { grades: GradePrice[] }) {
         )}
       </div>
 
-      {/* News */}
       <div>
         <h3 className="text-[16px] font-bold text-[#1A1A1A] mb-3">Market News</h3>
         {newsLoading ? (

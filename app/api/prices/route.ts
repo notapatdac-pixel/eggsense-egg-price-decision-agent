@@ -15,12 +15,11 @@ export async function GET(req: NextRequest) {
   const grade = parseInt(searchParams.get("grade") ?? "0") as Grade
   const days = parseInt(searchParams.get("days") ?? "60")
 
-  const [allGradesPromises, history, oil] = await Promise.all([
+  const [allGrades, history, oil] = await Promise.all([
     getAllGradesLatest(),
     getEggHistory(grade, days),
     getOilHistory(days),
   ])
-  const allGrades = await Promise.all(allGradesPromises)
 
   return NextResponse.json({ allGrades, history, oil })
 }

@@ -1,0 +1,12 @@
+// Thin re-export barrel — all logic lives in data/scripts/db/ domain modules
+export { db } from "./db/client"
+export { getAllGradesLatest, getEggHistory, getFeatureHistory, getLatestEggPrice, getContextFactors, upsertEggRow } from "./db/prices"
+export { getOilHistory, getLatestOil, upsertOilRow } from "./db/oil"
+export { ensureUser, getUser, getAiProfile, getOffset, upsertAiProfile } from "./db/profile"
+export { loadHistory, saveMsg } from "./db/conversations"
+export { saveSignal, backfillSignalActuals, getRecentForecastBias } from "./db/signals"
+export { getCachedNews, getActiveNews, getRecentNews, insertNewArticles, saveNewsCache } from "./db/news"
+export { getCachedForecast, saveForecastCache } from "./db/forecast-cache"
+export { logCron } from "./db/cron"
+export { checkAlerts, getAlerts, createAlert, deleteAlert, toggleAlert } from "./db/alerts"
+export { trackQuestion, getTopQuestions, getQuestionTopicStats } from "./db/questions"

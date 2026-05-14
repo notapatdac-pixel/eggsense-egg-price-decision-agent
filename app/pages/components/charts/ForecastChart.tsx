@@ -95,7 +95,10 @@ export function ForecastChart({ historical, forecast, oil, today, showOil, perso
           axisLine={false}
           tickLine={false}
           width={62}
-          domain={["auto", "auto"]}
+          domain={([min, max]: readonly number[]) => {
+            const pad = Math.max((max - min) * 0.3, 0.15)
+            return [Math.floor((min - pad) * 10) / 10, Math.ceil((max + pad) * 10) / 10]
+          }}
         />
         {showOil && (
           <YAxis
@@ -145,7 +148,7 @@ export function ForecastChart({ historical, forecast, oil, today, showOil, perso
         />
         <Line
           yAxisId="egg"
-          type="monotone"
+          type="monotoneX"
           dataKey="f"
           name={fcLabel}
           stroke="#2D6BE4"

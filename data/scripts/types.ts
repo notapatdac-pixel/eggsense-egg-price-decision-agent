@@ -46,6 +46,18 @@ export interface ForecastPoint {
   price: number
 }
 
+export interface FeaturePoint {
+  date: string
+  price: number
+  avgPrice: number | null   // all-grade average — used for shared market trend
+  diesel: number | null
+  corn: number | null
+  soybean: number | null
+  temp: number | null
+  disease_status: string | null
+  disease_impact: string | null
+}
+
 export interface ContextFactors {
   date?: string
   avg_temp_celsius?: number | null
@@ -62,14 +74,16 @@ export interface ContextFactors {
 export interface UserProfile {
   user_id: string
   email?: string | null
+  name?: string | null
   full_name?: string | null
   business_name?: string | null
   business_type?: string | null
   consumption_level?: string | null
   daily_egg_usage?: number | null
   preferred_grade?: string | null
-  phone?: string | null
-  province?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+  last_login_at?: string | null
 }
 
 export interface AiProfile {
@@ -131,10 +145,20 @@ export interface AgentSignal {
   last_price: number
 }
 
+export interface ToolCall {
+  tool: string
+  summary: string
+  failed?: boolean
+}
+
 export interface AgentResult {
   text: string
   metadata: Record<string, unknown> | null
   signal: AgentSignal | null
   suggestedQuestions: string[] | null
   profileUpdate: Partial<AiProfile> | null
+  toolTrace: ToolCall[] | null
+  plannerIntent: string | null
+  specialist: string | null
+  historyCount: number
 }

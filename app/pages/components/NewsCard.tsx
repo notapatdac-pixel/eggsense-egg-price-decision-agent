@@ -17,18 +17,9 @@ const CAT_ICON: Record<string, string> = {
   POLICY: "📋", DISEASE: "🦠", MARKET: "📊",
 }
 
-export function NewsCard({ item }: { item: NewsItem }) {
-  const catColor = CAT_COLOR[item.category ?? ""] ?? "#37474F"
-  const catIcon  = CAT_ICON[item.category  ?? ""] ?? "📰"
-
+function CardBody({ item, catColor, catIcon }: { item: NewsItem; catColor: string; catIcon: string }) {
   return (
-    <a
-      href={item.url && item.url !== "#" ? item.url : undefined}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="card flex flex-col overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-    >
-      {/* Image */}
+    <>
       <div className="relative h-[96px] bg-[#EDE8DF] flex-shrink-0 overflow-hidden">
         {item.image_url && (
           <img
@@ -40,22 +31,18 @@ export function NewsCard({ item }: { item: NewsItem }) {
             }}
           />
         )}
-        {/* Category badge overlay */}
         <span
           className="absolute top-1.5 left-1.5 text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-white/90"
           style={{ color: catColor }}
         >
           {catIcon} {item.category ?? "MARKET"}
         </span>
-        {/* Fallback icon when no image */}
         {!item.image_url && (
           <div className="w-full h-full flex items-center justify-center">
             <span className="text-3xl opacity-40">{catIcon}</span>
           </div>
         )}
       </div>
-
-      {/* Content */}
       <div className="p-2.5 flex flex-col gap-1 flex-1">
         <p className="text-[12px] font-semibold leading-[1.45] text-[#1A1A1A] line-clamp-3">
           {item.title}
@@ -75,6 +62,31 @@ export function NewsCard({ item }: { item: NewsItem }) {
           <span className="flex-shrink-0 font-medium">{item.time_ago_label ?? ""}</span>
         </div>
       </div>
-    </a>
+    </>
+  )
+}
+
+export function NewsCard({ item }: { item: NewsItem }) {
+  const catColor = CAT_COLOR[item.category ?? ""] ?? "#37474F"
+  const catIcon  = CAT_ICON[item.category  ?? ""] ?? "📰"
+  const hasLink  = !!(item.url && item.url !== "#")
+
+  if (hasLink) {
+    return (
+      <a
+        href={item.url!}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="card flex flex-col overflow-hidden hover:shadow-md cursor-pointer transition-shadow"
+      >
+        <CardBody item={item} catColor={catColor} catIcon={catIcon} />
+      </a>
+    )
+  }
+
+  return (
+    <div className="card flex flex-col overflow-hidden cursor-default">
+      <CardBody item={item} catColor={catColor} catIcon={catIcon} />
+    </div>
   )
 }
