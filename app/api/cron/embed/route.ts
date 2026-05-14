@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { embedDailyPrices, embedNewsArticles } from "@/agent/tools/knowledge-retriever"
+import { embedDailyPrices, embedNewsArticles, seedKnowledgeBase } from "@/agent/tools/knowledge-retriever"
 
 function auth(req: NextRequest) {
   const h = req.headers.get("x-cron-secret") ?? req.headers.get("authorization")?.replace("Bearer ", "")
@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
 async function handler(req: NextRequest) {
   if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   try {
+    await seedKnowledgeBase()
     await embedDailyPrices()
     await embedNewsArticles()
     return NextResponse.json({ status: "ok" })

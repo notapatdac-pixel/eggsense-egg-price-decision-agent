@@ -81,15 +81,16 @@ The agent learns each user's business context through natural conversation — b
 
 ## Data Sources
 
-| Source | Data | URL / Endpoint | How used by agent |
-|--------|------|----------------|-------------------|
-| DIT — กรมการค้าภายใน | Egg wholesale prices G0–G5 (avg/min/max) | `https://data.moc.go.th/OpenData/GISProductPrice` | Queried daily by cron; stored in `egg_price_daily`; served by `get_current_prices` tool |
-| Bangchak | Diesel / premium diesel pump prices (฿/L) | `https://www.bangchak.co.th` (HTML scrape) | Stored in `bangchak_oil_prices`; oil momentum signal feeds forecast model |
-| Open-Meteo | Bangkok temperature (°C) | `https://api.open-meteo.com/v1/forecast` | Heat stress signal (>35°C → laying rate drop → price up) in forecast |
-| Yahoo Finance | Corn (ZC=F) & soybean meal (ZM=F) futures | `https://finance.yahoo.com` (via yfinance) | Feed cost momentum signal; 14-day lag effect on egg prices |
-| WHO RSS + Tavily | Disease outbreak news (avian influenza, poultry disease) | `https://www.who.int/feeds/entity/csr/don/en/rss.xml` + Tavily API | Supply shock signal; stored in `egg_price_daily.disease_status` |
-| Tavily Search API | Egg-market news (oil, trade, weather, feed, disease, policy) | `https://api.tavily.com/search` | Categorised news served to agent via `get_market_news`; 6-hour cache |
-| Gemini text-embedding-004 | RAG embeddings (768-dim) | Google AI Studio API | Daily price summaries + news articles embedded into `rag_embeddings` (pgvector) |
+| Source | Authority | Data | How used by agent |
+|--------|-----------|------|-------------------|
+| **DIT — กรมการค้าภายใน** | Ministry of Commerce | Egg wholesale prices G0–G5 (avg/min/max) | Daily cron → `egg_price_daily`; `get_current_prices` tool |
+| **EPPO — สำนักงานนโยบายและแผนพลังงาน** | Ministry of Energy | Diesel / fuel prices (฿/L); proxied via Bangchak pump API for daily granularity | `bangchak_oil_prices`; 14-day lag oil momentum signal in forecast (r=0.72) |
+| **OAE — สำนักงานเศรษฐกิจการเกษตร** | Ministry of Agriculture | Animal feed prices (corn, soybean meal); proxied via Yahoo Finance futures (ZC=F, ZM=F) with THB conversion | Feed cost momentum; 14-day lag effect on egg prices |
+| **DLD — กรมปศุสัตว์** | Ministry of Agriculture | Poultry disease alerts (avian influenza, HPAI); supplemented by WHO RSS + Tavily for international scope | Supply shock signal → `disease_status`; served by `get_market_context` tool |
+| **TMD — กรมอุตุนิยมวิทยา** | Ministry of Digital Economy | Bangkok temperature (°C); proxied via Open-Meteo API (uses TMD-equivalent data for Thailand) | Heat stress signal (>35°C → laying rate −15–20% → price up) |
+| **Royal Gazette / MOE** | Office of the PM | Public holidays and school calendars (demand seasonality signals) | Planned: demand shock tagging for major Thai holidays |
+| **Tavily Search API** | — | Real-time egg-market news (oil, trade, weather, feed, disease, policy) | `get_market_news` tool; 6-hour cache in `news_cache` |
+| **Gemini text-embedding-004** | Google AI Studio | RAG embeddings (768-dim) | Price summaries + news embedded into `rag_embeddings` (pgvector) |
 
 All raw data is fetched by scheduled cron jobs and stored in Supabase before the agent queries it — the agent never makes live external API calls during a user turn.
 

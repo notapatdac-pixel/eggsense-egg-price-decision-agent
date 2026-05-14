@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { insertNewArticles, logCron } from "@/lib/db"
 import { fetchTavily, QUERY_A, QUERY_B, QUERY_C } from "@/lib/news-fetch"
+import { embedNewsArticles } from "@/agent/tools/knowledge-retriever"
 import type { NewsItem } from "@/lib/types"
 
 export const runtime = "nodejs"
@@ -40,6 +41,8 @@ async function handler(req: NextRequest) {
     }
 
     const inserted = await insertNewArticles("general", merged)
+    // Embed new articles immediately so RAG context stays fresh (≤24h lag from daily embed cron)
+    if (inserted > 0) void embedNewsArticles()
     await logCron("fetch-news-15min", "success", Date.now() - t, inserted)
     return NextResponse.json({ status: "ok", fetched: merged.length, inserted })
   } catch (e) {

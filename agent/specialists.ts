@@ -7,6 +7,7 @@ export interface SpecialistDef {
   icon: string
   allowedTools: string[]
   focusBlock: string
+  temperature: number
 }
 
 // Each specialist is a distinct agent with its own system instructions and tool access.
@@ -16,6 +17,7 @@ export const SPECIALISTS: Record<string, SpecialistDef> = {
     key: "price",
     displayName: "Price Analyst",
     icon: "💰",
+    temperature: 0.3,
     allowedTools: ["get_current_prices", "get_market_context"],
     focusBlock: `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -34,6 +36,7 @@ Required workflow:
     key: "forecast",
     displayName: "Forecast Analyst",
     icon: "📈",
+    temperature: 0.4,
     allowedTools: ["get_price_forecast", "get_market_context", "get_market_news"],
     focusBlock: `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -54,6 +57,7 @@ a genuine shock (disease outbreak, major oil spike). Express confidence proporti
     key: "buying",
     displayName: "Buying Advisor",
     icon: "🛒",
+    temperature: 0.35,
     allowedTools: ["get_current_prices", "get_price_forecast", "calculate_inventory", "get_market_context"],
     focusBlock: `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -73,6 +77,7 @@ Required workflow:
     key: "news",
     displayName: "Market Intelligence",
     icon: "📰",
+    temperature: 0.5,
     allowedTools: ["get_market_news", "get_market_context"],
     focusBlock: `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -91,6 +96,7 @@ Required workflow:
     key: "inventory",
     displayName: "Inventory Optimizer",
     icon: "📦",
+    temperature: 0.35,
     allowedTools: ["calculate_inventory", "get_current_prices", "get_price_forecast"],
     focusBlock: `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -109,6 +115,7 @@ Required workflow:
     key: "general",
     displayName: "General Advisor",
     icon: "🤖",
+    temperature: 0.7,
     allowedTools: [
       "get_current_prices",
       "get_price_forecast",

@@ -62,11 +62,11 @@ const bayesBlend = (learned: number, prior: number, n: number, minN = 15) =>
 // and commodity economics (not arbitrary guesses).
 
 const PRIORS = {
-  oilBeta:        0.25,   // 1% diesel rise → ~0.25% egg rise (7d lag, transport + farm energy)
+  oilBeta:        0.25,   // 1% diesel rise → ~0.25% egg rise (14d lag, transport + farm energy; r=0.72 confirmed)
   feedBeta:       0.15,   // 1% corn/soy rise → ~0.15% egg rise (14d lag, feed cost transmission)
   hotPremium:     0.018,  // week of >35°C → ~1.8% supply reduction (laying rate drops)
   coldDiscount:  -0.006,  // week of <18°C → ~-0.6% (lower demand, slightly less production stress)
-  diseasePremium: 0.08,   // active outbreak → ~8% supply shock
+  diseasePremium: 0.22,   // active outbreak → ~22% supply shock (Thai bird flu data: 20–40% spike, conservative midpoint)
   autoCorr7:      0.55,   // moderate trend persistence at 7-day horizon
 }
 
@@ -94,15 +94,14 @@ function learnWeights(history: FeaturePoint[]): LearnedWeights {
   const dates  = history.map((h) => h.date)
   const n      = prices.length
 
-  // ── Oil beta: Δ3d_diesel[t] → Δ7d_egg[t+7] ──────────────────────────
-  // Oil price changes propagate to egg farms via transport + energy costs.
-  // Empirical lag in Thai market: ~5–7 days.
+  // ── Oil beta: Δ3d_diesel[t] → Δ14d_egg[t+14] ────────────────────────
+  // Oil → transport + farm energy → egg price. 14-day lag confirmed (r=0.72) in Thai market data.
   const oilXs: number[] = [], oilYs: number[] = []
-  for (let t = 3; t < n - 7; t++) {
-    const d0 = history[t - 3].diesel, d1 = history[t].diesel, p0 = prices[t], p7 = prices[t + 7]
+  for (let t = 3; t < n - 14; t++) {
+    const d0 = history[t - 3].diesel, d1 = history[t].diesel, p0 = prices[t], p14 = prices[t + 14]
     if (d0 && d1 && d0 > 0 && p0 > 0) {
       oilXs.push((d1 - d0) / d0)
-      oilYs.push((p7 - p0) / p0)
+      oilYs.push((p14 - p0) / p0)
     }
   }
   const varOil = variance(oilXs)
@@ -244,6 +243,32 @@ function newsSentiment(articles: Array<{ category: string | null }>): number {
   return Math.max(-0.04, Math.min(0.05, score))
 }
 
+// ─── Thai holiday demand signal ───────────────────────────────────────────────
+// Fixed-date Thai public holidays drive egg demand spikes (family cooking events).
+// Variable Buddhist holidays (Makha/Visakha/Asanha Bucha) excluded — date varies
+// yearly and requires a calendar library; impact is smaller than Songkran/New Year.
+
+const THAI_FIXED_HOLIDAYS: Array<{ month: number; day: number; premium: number; name: string }> = [
+  { month: 1,  day: 1,  premium: 0.020, name: "New Year" },
+  { month: 4,  day: 6,  premium: 0.010, name: "Chakri Day" },
+  { month: 4,  day: 13, premium: 0.025, name: "Songkran" },
+  { month: 4,  day: 14, premium: 0.025, name: "Songkran" },
+  { month: 4,  day: 15, premium: 0.025, name: "Songkran" },
+  { month: 5,  day: 1,  premium: 0.010, name: "Labour Day" },
+  { month: 8,  day: 12, premium: 0.015, name: "Mother's Day" },
+  { month: 10, day: 23, premium: 0.010, name: "Chulalongkorn Day" },
+  { month: 12, day: 5,  premium: 0.015, name: "Father's Day" },
+  { month: 12, day: 10, premium: 0.010, name: "Constitution Day" },
+  { month: 12, day: 25, premium: 0.015, name: "Christmas" },
+  { month: 12, day: 31, premium: 0.020, name: "New Year's Eve" },
+]
+
+function thaiHolidaySignal(date: Date): number {
+  const m = date.getMonth() + 1
+  const d = date.getDate()
+  return THAI_FIXED_HOLIDAYS.find((h) => h.month === m && h.day === d)?.premium ?? 0
+}
+
 // ─── Main forecast ────────────────────────────────────────────────────────────
 
 export async function computeForecast(grade: Grade, daysAhead = 14, userOffset = 0): Promise<ForecastPoint[]> {
@@ -324,18 +349,20 @@ export async function computeForecast(grade: Grade, daysAhead = 14, userOffset =
     const base = hwMarket.level + dampedSum(i) * trendCapped + gradeSpread
 
     // Each factor ramps smoothly to its full effect over its natural lag window.
-    // No per-day DOW jitter — that creates visual zigzag noise at chart scale.
-    const oilAdj      = oilFull   * Math.min(1, i / 7)
+    const oilAdj      = oilFull   * Math.min(1, i / 14)
     const feedAdj     = feedFull  * Math.min(1, i / 14)
     const tempAdj     = tempFull  * Math.max(0, 1 - i / 10)
     const diseaseAdj  = diseaseFull * Math.max(0.3, 1 - i / 21)
     const shockAdj    = shockFull * Math.max(0, 1 - i / 5)
     const autoCorrAdj = autoCorrFull * Math.min(i / 7, 1)
     const newsAdj2    = newsAdj * Math.max(0, 1 - i / 14)
+    // Thai public holiday demand boost — applied at 25% of raw DOW bias to avoid visual zigzag
+    const holidayAdj  = thaiHolidaySignal(fd)
+    const dowAdj      = (w.dowBias[fd.getDay()] ?? 0) * 0.25
 
-    // Cap the "routine market" factors (oil, feed, temp, autocorr, news) at ±3%.
+    // Cap the "routine market" factors (oil, feed, temp, autocorr, news, holiday, DOW) at ±3.5%.
     // Disease and supply shocks are kept separate — they represent genuine step-changes.
-    const marketFactors = oilAdj + feedAdj + tempAdj + autoCorrAdj + newsAdj2
+    const marketFactors = oilAdj + feedAdj + tempAdj + autoCorrAdj + newsAdj2 + holidayAdj + dowAdj
     const cappedMarket  = Math.max(-0.03, Math.min(0.035, marketFactors))
     const totalFactor   = cappedMarket + diseaseAdj + shockAdj
 

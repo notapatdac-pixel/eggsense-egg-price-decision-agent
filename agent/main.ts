@@ -9,7 +9,7 @@ import {
 import type { AiProfile, AgentResult, Grade, ChatMessage, ToolCall } from "@/lib/types"
 import { computeForecastWithSignals } from "@/agent/tools/price-forecaster"
 import { buildPrompt } from "@/agent/prompts/egg-advisor-prompt"
-import { getSpecialistTools } from "@/agent/specialists"
+import { getSpecialistTools, getSpecialist } from "@/agent/specialists"
 import type { PlannerOutput } from "@/agent/planner"
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
@@ -153,13 +153,14 @@ async function runWithModel(
   historyCount?: number
 ): Promise<AgentResult> {
   // Route to the specialist's restricted tool set — each specialist is a distinct agent
+  const specialist     = getSpecialist(planner?.specialist)
   const specialistTools = getSpecialistTools(planner?.specialist)
 
   const model = genAI.getGenerativeModel({
     model: modelId,
     systemInstruction: buildPrompt(profile, rag, planner),
     tools: [{ functionDeclarations: specialistTools }],
-    generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
+    generationConfig: { temperature: specialist.temperature, maxOutputTokens: 4096 },
   })
 
   const chat = model.startChat({ history: gemHist })
