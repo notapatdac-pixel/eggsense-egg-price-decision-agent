@@ -38,7 +38,7 @@ export default function AgentPage({
   email: string
   latestSignal: AgentSignal | null
 }) {
-  const [messages, setMessages] = useState<Msg[]>(initialHistory)
+  const [messages, setMessages] = useState<Msg[]>(initialHistory.filter((m) => m.content?.trim()))
   const [input, setInput] = useState("")
   const [sending, setSending] = useState(false)
   const [pendingSpecialist, setPendingSpecialist] = useState<{ icon: string; label: string } | null>(null)
@@ -82,6 +82,7 @@ export default function AgentPage({
       })
       const data = (await res.json()) as AgentResult
       const ts = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+      if (!data.text?.trim()) return
       setMessages((prev) => [
         ...prev,
         {
@@ -103,7 +104,7 @@ export default function AgentPage({
       const ts = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Connection error. Please try again.", timestamp: ts },
+        { role: "assistant", content: "เกิดข้อผิดพลาดในการเชื่อมต่อครับ กรุณาลองใหม่อีกครั้ง", timestamp: ts },
       ])
     } finally {
       setSending(false)
@@ -126,8 +127,8 @@ export default function AgentPage({
               className="bg-white text-[#3D3830] px-4 py-3 text-[14px] leading-relaxed border border-[#E5DDD4] shadow-sm max-w-[76%]"
               style={{ borderRadius: "4px 16px 16px 16px" }}
             >
-              Hello! I&apos;m EggSense AI. I can help you make smarter egg purchasing decisions using live DIT prices,
-              weather, oil trends, and disease alerts. What would you like to know?
+              สวัสดีครับ ผม EggSense AI ช่วยให้คุณตัดสินใจซื้อไข่ได้ฉลาดขึ้น ด้วยราคา DIT แบบ real-time
+              แนวโน้มน้ำมัน อากาศ และข้อมูลโรคระบาด จะถามเรื่องอะไรดีครับ?
             </div>
           </div>
         )}
@@ -184,7 +185,7 @@ export default function AgentPage({
               send(input)
             }
           }}
-          placeholder="Ask about egg prices..."
+          placeholder="ถามเรื่องราคาไข่..."
           className="flex-1 text-[14px] text-[#1A1A1A] placeholder:text-[#B0AAA2] outline-none bg-transparent"
           disabled={sending}
         />

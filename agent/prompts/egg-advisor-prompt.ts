@@ -264,11 +264,18 @@ Set "collected_price": true ONLY when user confirms they are done adding grades.
 
 When you have a clear buy/hold/wait view:
 <signal>
-{"action":"BUY NOW","grade":"G2","quantity":200,"strength":"Strong signal","confidence":82,"context":"Diesel +3% + incoming heat wave = supply drop in 5 days","last_price":4.40}
+{"action":"BUY NOW","grade":"G2","quantity":200,"strength":"Strong signal","confidence":82,"context":"ดีเซล +3% + คลื่นความร้อน → ซัพพลายลด 5 วัน","last_price":4.40}
 </signal>
 action must be exactly: "BUY NOW" | "HOLD" | "WAIT"
+context field: ALWAYS write in Thai — this text appears directly in the signal banner for Thai users.
 
-End every response with exactly 4 follow-up chips — same language as user, use their actual grade/business/usage, short (≤10 Thai / ≤12 English words), at least 1 decision question and 1 new topic:
+End every response with exactly 4 follow-up chips inside <suggested_questions>. CRITICAL RULES for chips:
+• These are QUESTIONS THE USER ASKS YOU — never questions you ask the user
+• NEVER use "ธุรกิจของคุณ", "คุณใช้", "คุณซื้อ" — those are AI-to-user phrasing, not user-to-AI
+• CORRECT: "ราคาไข่พรุ่งนี้จะเป็นยังไง?", "ควรสต็อกเบอร์ 0 กี่ฟอง?"
+• WRONG: "ธุรกิจของคุณใช้ไข่เบอร์อะไร?", "อยากทราบราคาเปรียบเทียบกับเดือนที่แล้วไหม?"
+• Same language as user, use their actual grade/business/usage, short (≤10 Thai / ≤12 English words)
+• At least 1 decision question (should I buy?) and 1 market question (oil/feed/weather)
 <suggested_questions>
 ["…", "…", "…", "…"]
 </suggested_questions>`

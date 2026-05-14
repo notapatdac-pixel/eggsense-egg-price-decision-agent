@@ -26,7 +26,7 @@ export default async function AiAgent() {
       action: s.action as "BUY NOW" | "HOLD" | "WAIT",
       grade: s.grade ?? undefined,
       quantity: s.quantity_rec ?? 0,
-      strength: s.confidence >= 80 ? "Strong signal" : "Signal",
+      strength: s.confidence >= 80 ? "Strong signal" : "Signal",  // kept as key; SignalBanner translates
       confidence: s.confidence ?? 0,
       context: s.market_context ?? "",
       last_price: lastPrice,

@@ -34,7 +34,8 @@ async function handler(req: NextRequest) {
       daily: { time: string[]; temperature_2m_max: number[]; temperature_2m_min: number[]; weathercode: number[] }
     }
     const d = data.daily
-    const today = d.time[0]
+    // Use BKK timezone date — API date field may reflect UTC, causing D-1 mismatch at 00:30 BKK
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date())
     const tAvg = Math.round(((d.temperature_2m_max[0] + d.temperature_2m_min[0]) / 2) * 10) / 10
     const wCode = d.weathercode[0]
     const tempCat = classifyTemp(tAvg)

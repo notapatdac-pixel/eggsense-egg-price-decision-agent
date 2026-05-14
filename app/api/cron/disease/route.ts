@@ -2,86 +2,122 @@ import { NextRequest, NextResponse } from "next/server"
 import { upsertEggRow, logCron } from "@/lib/db"
 export const runtime = "nodejs"
 
-const WHO_RSS = "https://www.who.int/feeds/entity/csr/don/en/rss.xml"
-const DKW = ["avian influenza", "h5n1", "h5n2", "bird flu", "newcastle disease", "poultry disease", "ไข้หวัดนก"]
-const TKW = ["thailand", "thai", "ประเทศไทย", "southeast asia", "asean"]
+const DKW = ["avian influenza", "h5n1", "h5n2", "h5n6", "bird flu", "hpai", "newcastle disease", "poultry disease", "ไข้หวัดนก"]
+const TKW = ["thailand", "thai", "ประเทศไทย", "southeast asia", "asean", "chiang mai", "bangkok"]
+
+const SHORT_DISEASE: [RegExp, string][] = [
+  [/h5n1/i,          "H5N1"],
+  [/h5n2/i,          "H5N2"],
+  [/h5n6/i,          "H5N6"],
+  [/h7n9/i,          "H7N9"],
+  [/hpai/i,          "HPAI"],
+  [/newcastle/i,     "Newcastle"],
+  [/ไข้หวัดนก/,      "ไข้หวัดนก"],
+  [/bird flu/i,      "Avian Flu"],
+  [/avian influenza/i, "Avian Flu"],
+  [/poultry disease/i, "Poultry"],
+]
 
 function auth(req: NextRequest) {
   const h = req.headers.get("x-cron-secret") ?? req.headers.get("authorization")?.replace("Bearer ", "")
   return h === process.env.CRON_SECRET
 }
 
-async function whoData() {
-  try {
-    const r = await fetch(WHO_RSS, { headers: { "User-Agent": "EggSense/1.0" }, signal: AbortSignal.timeout(10000) })
-    if (!r.ok) return { titles: [], summaries: [] }
-    const xml = await r.text()
-    const titles = (xml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/g) ?? []).map((m) =>
-      m.replace(/<\/?title[^>]*>|<!\[CDATA\[|\]\]>/g, "").trim()
-    )
-    const descs = (xml.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/g) ?? []).map((m) =>
-      m.replace(/<\/?description[^>]*>|<!\[CDATA\[|\]\]>/g, "").trim()
-    )
-    return { titles, summaries: descs }
-  } catch {
-    return { titles: [], summaries: [] }
+function extractShortName(text: string): string | null {
+  for (const [re, name] of SHORT_DISEASE) {
+    if (re.test(text)) return name
   }
+  return null
 }
 
-async function tavilyData() {
+// PRIMARY: Tavily web search — enforces 30-day filter server-side
+async function tavilySearch(): Promise<{ text: string; count: number }> {
   try {
     const r = await fetch("https://api.tavily.com/search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         api_key: process.env.TAVILY_API_KEY,
-        query: "avian influenza bird flu Thailand poultry disease 2025 ไข้หวัดนก",
-        max_results: 5,
-        days: 7,
+        query: "avian influenza bird flu Thailand poultry HPAI ไข้หวัดนก",
+        max_results: 10,
+        days: 30,
       }),
       signal: AbortSignal.timeout(10000),
     })
+    if (!r.ok) return { text: "", count: 0 }
     const d = (await r.json()) as { results: Array<{ title: string; content: string }> }
+    const results = d.results ?? []
     return {
-      titles: (d.results ?? []).map((x) => x.title),
-      summaries: (d.results ?? []).map((x) => x.content?.slice(0, 200) ?? ""),
+      text: results.map((x) => `${x.title} ${x.content}`).join(" ").toLowerCase(),
+      count: results.length,
     }
   } catch {
-    return { titles: [], summaries: [] }
+    return { text: "", count: 0 }
   }
 }
 
-export async function GET(req: NextRequest) {
-  return handler(req)
+// FALLBACK: GDELT free news index — no API key needed, real-time global news
+async function gdeltSearch(): Promise<{ text: string; count: number }> {
+  try {
+    const q = encodeURIComponent('"bird flu" OR "avian influenza" OR "HPAI" Thailand')
+    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=artlist&format=json&timespan=30d&maxrecords=10&sort=DateDesc`
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    if (!r.ok) return { text: "", count: 0 }
+    const d = (await r.json()) as { articles?: Array<{ title: string }> }
+    const articles = d.articles ?? []
+    return {
+      text: articles.map((a) => a.title).join(" ").toLowerCase(),
+      count: articles.length,
+    }
+  } catch {
+    return { text: "", count: 0 }
+  }
 }
-export async function POST(req: NextRequest) {
-  return handler(req)
-}
+
+export async function GET(req: NextRequest) { return handler(req) }
+export async function POST(req: NextRequest) { return handler(req) }
+
 async function handler(req: NextRequest) {
   if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const t = Date.now()
-  const today = new Date().toISOString().split("T")[0]
-  let { titles, summaries } = await whoData()
-  if (!titles.length) ({ titles, summaries } = await tavilyData())
-  const combined = [...titles, ...summaries].join(" ").toLowerCase()
-  const hasDisease = DKW.some((k) => combined.includes(k))
-  const hasThai = TKW.some((k) => combined.includes(k))
-  let status: string,
-    impact: string,
-    event: string | null = null
-  if (!hasDisease) {
-    status = "None"
-    impact = "None"
-  } else if (hasThai) {
-    status = "Active"
-    impact = "High"
-    event = titles.find((t) => DKW.some((k) => t.toLowerCase().includes(k)))?.slice(0, 200) ?? null
-  } else {
-    status = "Monitoring"
-    impact = "Low"
-    event = titles[0]?.slice(0, 200) ?? null
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date())
+
+  // Tavily primary — more current and Thailand-specific than WHO RSS
+  const tv = await tavilySearch()
+  let recentText = tv.text
+  let recentItems = tv.count
+  let source = "tavily"
+
+  // GDELT fallback only if Tavily returned nothing
+  if (!recentItems) {
+    const gd = await gdeltSearch()
+    recentText = gd.text
+    recentItems = gd.count
+    source = "gdelt"
   }
+
+  const hasDisease = DKW.some((k) => recentText.includes(k))
+  const hasThai    = TKW.some((k) => recentText.includes(k))
+
+  let status: string, impact: string, event: string | null = null
+  if (!hasDisease) {
+    status = "None"; impact = "None"
+  } else if (hasThai) {
+    status = "Active"; impact = "High"
+    event = extractShortName(recentText)
+  } else {
+    status = "Monitoring"; impact = "Low"
+    event = extractShortName(recentText)
+  }
+
   await upsertEggRow({ date: today, disease_event: event, disease_status: status, disease_supply_impact: impact })
   await logCron("fetch-disease-daily", "success", Date.now() - t, 1)
-  return NextResponse.json({ status: "ok", date: today, disease_status: status, disease_event: event })
+  return NextResponse.json({
+    status: "ok",
+    date: today,
+    disease_status: status,
+    disease_event: event,
+    source,
+    items_checked: recentItems,
+  })
 }

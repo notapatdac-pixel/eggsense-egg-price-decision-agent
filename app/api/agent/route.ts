@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     }
 
     await Promise.all([
-      saveMsg(user.id, "assistant", result.text, result.metadata ?? undefined),
+      result.text ? saveMsg(user.id, "assistant", result.text, result.metadata ?? undefined) : Promise.resolve(),
       topic ? trackQuestion(message, topic) : Promise.resolve(),
       result.profileUpdate ? upsertAiProfile(user.id, result.profileUpdate as Partial<AiProfile>) : Promise.resolve(),
       result.signal

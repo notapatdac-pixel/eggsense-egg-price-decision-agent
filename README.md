@@ -1,6 +1,6 @@
 # EggSense — AI Egg Price Decision Agent
 
-> **MADT7204 Vibe Coding Project** · Team 1 · Bangkok Oil Price Crisis
+> **MADT7204 Vibe Coding Project** · Bangkok Oil Price Crisis
 
 Thai food businesses are caught in a squeeze: diesel prices hit record highs, raising transport and farm energy costs, which pushes egg prices up unpredictably. EggSense is an agentic AI advisor that monitors live DIT egg prices, tracks fuel and feed cost trends, and tells food businesses exactly **when to buy, how much to stock, and why prices are moving** — in plain Thai.
 

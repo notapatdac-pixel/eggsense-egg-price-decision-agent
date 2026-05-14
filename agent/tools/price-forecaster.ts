@@ -291,8 +291,13 @@ export async function computeForecast(grade: Grade, daysAhead = 14, userOffset =
   }
 
   const prices    = history.map((h) => h.price)
-  // Fall back to grade price when avg_egg_price not yet populated
-  const avgPrices = history.map((h) => h.avgPrice ?? h.price)
+
+  // Normalize grade price to market-average scale so all grades share the same directional signal.
+  // FALLBACK[2] (G2 Large) is the market benchmark (closest to all-grade average).
+  // When avg_egg_price is populated we use it directly; otherwise we rescale from G2 ratio.
+  // This ensures G0, G1, … G5 always trend in the same direction as the market.
+  const gradeToMarket = FALLBACK[2] / (FALLBACK[grade] || FALLBACK[2])
+  const avgPrices = history.map((h) => h.avgPrice ?? h.price * gradeToMarket)
 
   // Step 1: Shared market trend from all-grade average.
   // All grades share the same market direction — prevents one grade's idiosyncratic
@@ -301,9 +306,9 @@ export async function computeForecast(grade: Grade, daysAhead = 14, userOffset =
 
   // Grade-specific level anchor: how far above/below market this grade sits on average.
   // base(i) = hwMarket.level + dampedTrend(i) + gradeSpread
-  //   hwMarket.level = smoothed market average now
+  //   hwMarket.level = smoothed market average now (market scale)
   //   dampedTrend(i) = where market is heading (damped, not linear)
-  //   gradeSpread    = this grade's persistent offset above/below market
+  //   gradeSpread    = this grade's persistent offset above/below market (back to grade scale)
   const gradeSpread = mean(prices.slice(-7)) - mean(avgPrices.slice(-7))
 
   // Damped trend (Gardner-McKenzie, φ=0.88): caps unbounded linear growth.
@@ -334,13 +339,15 @@ export async function computeForecast(grade: Grade, daysAhead = 14, userOffset =
                   : 0
   const diseaseFull = sig.diseaseActive ? w.diseasePremium : 0
   const shockFull   = (sig.demandShock ? 0.05 : 0) + (sig.supplyShock ? -0.04 : 0)
-  const trendSign   = Math.sign(hwMarket.trend)
+  // Use oil+feed momentum as shared directional signal so all grades trend together.
+  // Per-grade hwMarket.trend diverges when avg_egg_price is NULL (each grade fits its
+  // own history), causing G1 to forecast below G2. Oil/feed momentum is market-wide.
+  const trendSign = Math.sign(oilFull + feedFull) || Math.sign(hwMarket.trend)
   const autoCorrFull = trendSign * w.autoCorr7 * 0.004 * 7
 
-  // Cap the HW trend at ±฿0.004/day to prevent extrapolating a recent short-term move
-  // into an unrealistic 14-day run. At ฿4.50, dampedSum(14)≈7.3 × 0.004 ≈ ฿0.029 max drift.
-  const MAX_DAILY_TREND = 0.004
-  const trendCapped = Math.sign(hwMarket.trend) * Math.min(Math.abs(hwMarket.trend), MAX_DAILY_TREND)
+  // Zero out per-grade HW trend from base — direction comes entirely from shared
+  // market factors (oil, feed, temp, autocorr) so grades cannot cross each other.
+  const trendCapped = 0
 
   for (let i = 1; i <= daysAhead; i++) {
     const fd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i)
