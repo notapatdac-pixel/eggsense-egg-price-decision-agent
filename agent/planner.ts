@@ -52,8 +52,8 @@ export async function runPlanner(message: string): Promise<PlannerOutput> {
       }
       return { ...DEFAULT, ...parsed }
     }
-  } catch {
-    // Planner failure is non-fatal — executor proceeds without hints
+  } catch (e) {
+    console.warn("[planner] failed:", String(e))
   }
   return DEFAULT
 }

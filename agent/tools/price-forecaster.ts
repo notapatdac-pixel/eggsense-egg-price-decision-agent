@@ -292,30 +292,16 @@ export async function computeForecast(grade: Grade, daysAhead = 14, userOffset =
 
   const prices    = history.map((h) => h.price)
 
-  // Normalize grade price to market-average scale so all grades share the same directional signal.
-  // FALLBACK[2] (G2 Large) is the market benchmark (closest to all-grade average).
-  // When avg_egg_price is populated we use it directly; otherwise we rescale from G2 ratio.
-  // This ensures G0, G1, … G5 always trend in the same direction as the market.
-  const gradeToMarket = FALLBACK[2] / (FALLBACK[grade] || FALLBACK[2])
-  const avgPrices = history.map((h) => h.avgPrice ?? h.price * gradeToMarket)
+  // Fit HW on this grade's own price history. Direction comes from market factors
+  // (oil, feed, autocorr) rather than HW trend extrapolation so all grades trend together.
+  const hwGrade = fitHW(prices)
 
-  // Step 1: Shared market trend from all-grade average.
-  // All grades share the same market direction — prevents one grade's idiosyncratic
-  // history (e.g. Grade 2 temporarily declining) from diverging from the rest.
-  const hwMarket = fitHW(avgPrices)
-
-  // Grade-specific level anchor: how far above/below market this grade sits on average.
-  // base(i) = hwMarket.level + dampedTrend(i) + gradeSpread
-  //   hwMarket.level = smoothed market average now (market scale)
-  //   dampedTrend(i) = where market is heading (damped, not linear)
-  //   gradeSpread    = this grade's persistent offset above/below market (back to grade scale)
-  const gradeSpread = mean(prices.slice(-7)) - mean(avgPrices.slice(-7))
-
-  // Damped trend (Gardner-McKenzie, φ=0.88): caps unbounded linear growth.
-  // dampedSum(h) = φ*(1-φ^h)/(1-φ), converges to φ/(1-φ) ≈ 7.3 as h→∞.
-  // So even a +0.01/day trend contributes at most ~0.073 THB total, not 0.14 at day 14.
-  const phi = 0.88
-  const dampedSum = (h: number) => phi * (1 - Math.pow(phi, h)) / (1 - phi)
+  // Clamp level to ±20% of recent 3-day observed price to prevent DB inconsistency
+  // (seeded vs live data) from producing runaway base values.
+  const recentPrice = mean(prices.slice(-3))
+  const clampedLevel = recentPrice > 0
+    ? Math.max(recentPrice * 0.80, Math.min(recentPrice * 1.20, hwGrade.level))
+    : hwGrade.level
 
   // Step 2: Learn factor weights from historical correlations
   const w = learnWeights(history)
@@ -329,9 +315,6 @@ export async function computeForecast(grade: Grade, daysAhead = 14, userOffset =
   const now = new Date()
   const forecast: ForecastPoint[] = []
 
-  // Pre-compute factor adjustments at the full horizon first, then interpolate smoothly.
-  // This prevents each day from getting an independent noisy adjustment.
-  // Oil fully propagated by day 7, feed by day 14 — ramp in linearly, plateau after.
   const oilFull   = sig.oilMomentum  * w.oilBeta
   const feedFull  = sig.feedMomentum * w.feedBeta
   const tempFull  = sig.tempState === "hot"  ? w.hotPremium
@@ -339,21 +322,13 @@ export async function computeForecast(grade: Grade, daysAhead = 14, userOffset =
                   : 0
   const diseaseFull = sig.diseaseActive ? w.diseasePremium : 0
   const shockFull   = (sig.demandShock ? 0.05 : 0) + (sig.supplyShock ? -0.04 : 0)
-  // Use oil+feed momentum as shared directional signal so all grades trend together.
-  // Per-grade hwMarket.trend diverges when avg_egg_price is NULL (each grade fits its
-  // own history), causing G1 to forecast below G2. Oil/feed momentum is market-wide.
-  const trendSign = Math.sign(oilFull + feedFull) || Math.sign(hwMarket.trend)
+  const trendSign = Math.sign(oilFull + feedFull) || Math.sign(hwGrade.trend)
   const autoCorrFull = trendSign * w.autoCorr7 * 0.004 * 7
-
-  // Zero out per-grade HW trend from base — direction comes entirely from shared
-  // market factors (oil, feed, temp, autocorr) so grades cannot cross each other.
-  const trendCapped = 0
 
   for (let i = 1; i <= daysAhead; i++) {
     const fd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i)
 
-    // Market level + damped & capped shared trend + this grade's persistent spread
-    const base = hwMarket.level + dampedSum(i) * trendCapped + gradeSpread
+    const base = clampedLevel
 
     // Each factor ramps smoothly to its full effect over its natural lag window.
     const oilAdj      = oilFull   * Math.min(1, i / 14)

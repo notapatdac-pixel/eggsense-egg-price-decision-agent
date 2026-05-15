@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { upsertEggRow, logCron } from "@/lib/db"
+import { cronAuth } from "../_auth"
 export const runtime = "nodejs"
 
 const DIT      = "https://data.moc.go.th/OpenData/GISProductPrice"
 const DIT_CORN    = "W16040"  // ข้าวโพดเลี้ยงสัตว์ ราคาส่งออก FOB
 const DIT_SOYBEAN = "W17012"  // กากถั่วเหลืองนำเข้า โปรตีนร้อยละ 47
 
-// DIT publishes D-1 data (same as egg prices)
 function ditDate(): string {
-  const d = new Date()
-  d.setDate(d.getDate() - 1)
-  return d.toISOString().split("T")[0]
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date())
 }
 
 async function ditPrice(productId: string, date: string): Promise<number | null> {
@@ -57,19 +55,13 @@ async function usdThb(): Promise<number> {
   }
 }
 
-function auth(req: NextRequest) {
-  const h = req.headers.get("x-cron-secret") ?? req.headers.get("authorization")?.replace("Bearer ", "")
-  return h === process.env.CRON_SECRET
-}
-
 export async function GET(req: NextRequest) { return handler(req) }
 export async function POST(req: NextRequest) { return handler(req) }
 
 async function handler(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!cronAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const t = Date.now()
-  const today    = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date())
-  const dataDate = ditDate()
+  const dataDate = ditDate()  // D-1 BKK — same row as eggs
 
   // Try DIT Thai domestic prices first (D-1 data, same cadence as eggs)
   const [ditCorn, ditSoybean] = await Promise.all([
@@ -100,11 +92,11 @@ async function handler(req: NextRequest) {
     return NextResponse.json({ status: "failed" }, { status: 500 })
   }
 
-  const row: Record<string, unknown> = { date: today }
+  const row: Record<string, unknown> = { date: dataDate }
   if (corn)    row.corn_price_thb          = corn
   if (soybean) row.soybean_meal_price_thb  = soybean
 
   await upsertEggRow(row)
   await logCron("fetch-feedcosts-daily", "success", Date.now() - t, 1)
-  return NextResponse.json({ status: "ok", date: today, corn_thb: corn, soybean_thb: soybean, source })
+  return NextResponse.json({ status: "ok", date: dataDate, corn_thb: corn, soybean_thb: soybean, source })
 }

@@ -57,6 +57,17 @@ export async function POST(req: NextRequest) {
   ])
 
   try {
+    // If the last assistant turn asked a profile question and the reply is short (≤4 words),
+    // force general specialist so the model focuses on saving the profile answer rather than
+    // launching a tool-heavy specialist workflow that skips the profile_update tag.
+    const lastAssistant = [...history].reverse().find((m) => m.role === "assistant")
+    const isShortReply = message.trim().split(/\s+/).length <= 4
+    const PROFILE_Q = /จังหวัด|ภูมิภาค|ใช้ไข่วันละ|ประเภทไหน|เบอร์ไหน|กี่ฟอง|ฟองละ|ปกติสั่ง|รับไข่วัน|เกรดอื่น|มีเกรดอื่น|ราคาขึ้นกระทบ|ไม่ค่อยมีผล|ซื้อไข่จาก/
+    if (isShortReply && lastAssistant != null && PROFILE_Q.test(lastAssistant.content)) {
+      planner.specialist = "general"
+      planner.intent = "profile_collection"
+    }
+
     // Save user message first so it always gets a lower DB ID than the assistant reply
     await saveMsg(user.id, "user", message)
 
@@ -82,7 +93,7 @@ export async function POST(req: NextRequest) {
     }
 
     await Promise.all([
-      result.text ? saveMsg(user.id, "assistant", result.text, result.metadata ?? undefined) : Promise.resolve(),
+      saveMsg(user.id, "assistant", result.text || "​", result.metadata ?? undefined),
       topic ? trackQuestion(message, topic) : Promise.resolve(),
       result.profileUpdate ? upsertAiProfile(user.id, result.profileUpdate as Partial<AiProfile>) : Promise.resolve(),
       result.signal
@@ -112,6 +123,9 @@ export async function POST(req: NextRequest) {
     const text = isRateLimit
       ? "ระบบกำลังยุ่งมากครับ กรุณารอ 30 วินาทีแล้วลองใหม่ | Too many requests — please wait 30 seconds and try again."
       : "เกิดข้อผิดพลาดชั่วคราวครับ กรุณาลองใหม่อีกครั้ง | Temporary error — please try again."
+
+    // Save the error as an assistant message so history stays valid (user→assistant pairs)
+    await saveMsg(user.id, "assistant", text).catch(() => {})
 
     return NextResponse.json({
       text,

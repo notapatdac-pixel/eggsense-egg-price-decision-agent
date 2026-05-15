@@ -2,15 +2,11 @@ import { NextRequest, NextResponse } from "next/server"
 import { insertNewArticles, logCron } from "@/lib/db"
 import { fetchTavily, QUERY_A, QUERY_B, QUERY_C } from "@/lib/news-fetch"
 import { embedNewsArticles } from "@/agent/tools/knowledge-retriever"
+import { cronAuth } from "../_auth"
 import type { NewsItem } from "@/lib/types"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
-
-function auth(req: NextRequest) {
-  const h = req.headers.get("x-cron-secret") ?? req.headers.get("authorization")?.replace("Bearer ", "")
-  return h === process.env.CRON_SECRET
-}
 
 export async function GET(req: NextRequest) {
   return handler(req)
@@ -20,7 +16,7 @@ export async function POST(req: NextRequest) {
 }
 
 async function handler(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!cronAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const t = Date.now()
 
   try {
@@ -43,11 +39,11 @@ async function handler(req: NextRequest) {
     const inserted = await insertNewArticles("general", merged)
     // Embed new articles immediately so RAG context stays fresh (≤24h lag from daily embed cron)
     if (inserted > 0) void embedNewsArticles()
-    await logCron("fetch-news-15min", "success", Date.now() - t, inserted)
+    await logCron("fetch-news-daily", "success", Date.now() - t, inserted)
     return NextResponse.json({ status: "ok", fetched: merged.length, inserted })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    await logCron("fetch-news-15min", "failed", Date.now() - t, 0, msg)
+    await logCron("fetch-news-daily", "failed", Date.now() - t, 0, msg)
     return NextResponse.json({ status: "failed", error: msg }, { status: 500 })
   }
 }

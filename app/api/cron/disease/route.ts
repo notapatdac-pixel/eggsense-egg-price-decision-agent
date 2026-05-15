@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { upsertEggRow, logCron } from "@/lib/db"
+import { cronAuth } from "../_auth"
 export const runtime = "nodejs"
 
 const DKW = ["avian influenza", "h5n1", "h5n2", "h5n6", "bird flu", "hpai", "newcastle disease", "poultry disease", "ไข้หวัดนก"]
@@ -18,9 +19,8 @@ const SHORT_DISEASE: [RegExp, string][] = [
   [/poultry disease/i, "Poultry"],
 ]
 
-function auth(req: NextRequest) {
-  const h = req.headers.get("x-cron-secret") ?? req.headers.get("authorization")?.replace("Bearer ", "")
-  return h === process.env.CRON_SECRET
+function ditDate(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date())
 }
 
 function extractShortName(text: string): string | null {
@@ -78,9 +78,9 @@ export async function GET(req: NextRequest) { return handler(req) }
 export async function POST(req: NextRequest) { return handler(req) }
 
 async function handler(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!cronAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const t = Date.now()
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date())
+  const dataDate = ditDate()
 
   // Tavily primary — more current and Thailand-specific than WHO RSS
   const tv = await tavilySearch()
@@ -110,11 +110,11 @@ async function handler(req: NextRequest) {
     event = extractShortName(recentText)
   }
 
-  await upsertEggRow({ date: today, disease_event: event, disease_status: status, disease_supply_impact: impact })
+  await upsertEggRow({ date: dataDate, disease_event: event, disease_status: status, disease_supply_impact: impact })
   await logCron("fetch-disease-daily", "success", Date.now() - t, 1)
   return NextResponse.json({
     status: "ok",
-    date: today,
+    date: dataDate,
     disease_status: status,
     disease_event: event,
     source,

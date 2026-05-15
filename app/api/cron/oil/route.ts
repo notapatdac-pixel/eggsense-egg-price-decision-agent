@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { upsertOilRow, upsertEggRow, getLatestOil, logCron } from "@/lib/db"
+import { cronAuth } from "../_auth"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -32,11 +33,6 @@ function parseBangchakDate(raw: unknown): string | null {
   return null
 }
 
-function auth(req: NextRequest) {
-  const h = req.headers.get("x-cron-secret") ?? req.headers.get("authorization")?.replace("Bearer ", "")
-  return h === process.env.CRON_SECRET
-}
-
 export async function GET(req: NextRequest) {
   return handler(req)
 }
@@ -45,7 +41,7 @@ export async function POST(req: NextRequest) {
 }
 
 async function handler(req: NextRequest) {
-  if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!cronAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   const t = Date.now()
   const today = todayBKK()
   let row: Record<string, unknown> | null = null

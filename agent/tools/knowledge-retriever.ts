@@ -38,7 +38,12 @@ export async function retrieveContext(query: string, topK = 4): Promise<string[]
 
 export async function embedDailyPrices(): Promise<void> {
   const { data } = await db().from("egg_price_daily").select("*").order("date", { ascending: false }).limit(7)
-  for (const row of data ?? []) {
+  if (!data?.length) return
+  // Delete stale egg_price embeddings before re-inserting to avoid duplicates
+  await db().from("rag_embeddings").delete().eq("content_type", "egg_price")
+  for (const row of data) {
+    // Skip rows with no actual egg price data yet
+    if (!row.avg_egg_price && !row.g0_jumbo_avg && !row.g2_large_avg) continue
     const text = [
       `Egg prices ${row.date}:`,
       `G0 ฿${row.g0_jumbo_avg}, G1 ฿${row.g1_xlarge_avg}, G2 ฿${row.g2_large_avg},`,
@@ -114,7 +119,10 @@ export async function embedNewsArticles(): Promise<void> {
     .select("title,snippet,category,url,published_at")
     .gt("expires_at", new Date().toISOString())
     .limit(20)
-  for (const row of data ?? []) {
+  if (!data?.length) return
+  // Delete stale news embeddings before re-inserting to avoid duplicates
+  await db().from("rag_embeddings").delete().eq("content_type", "news")
+  for (const row of data) {
     const text = `[${row.category}] ${row.title}. ${row.snippet ?? ""}`
     const vec = await embedText(text)
     if (!vec) continue

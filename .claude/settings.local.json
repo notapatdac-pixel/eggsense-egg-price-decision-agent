@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:data.moc.go.th)",
+      "Bash(curl -s \"https://data.moc.go.th/OpenData/GISProductPrice?product_id=W11026&from_date=2026-05-14&to_date=2026-05-14\" -H \"Accept: application/json\" --max-time 10)",
+      "Bash(curl -sv \"https://data.moc.go.th/OpenData/GISProductPrice?product_id=W11026&from_date=2026-05-14&to_date=2026-05-14\")",
+      "Bash(curl -sk \"https://data.moc.go.th/OpenData/GISProductPrice?product_id=W11026&from_date=2026-05-14&to_date=2026-05-14\" -H \"Accept: application/json\")",
+      "Bash(curl -sk \"https://dataapi.moc.go.th/gis-product-price?product_id=W11026&from_date=2026-05-14&to_date=2026-05-14\" -H \"Accept: application/json\")",
+      "Bash(curl *)",
+      "Bash(nslookup dataapi.moc.go.th)",
+      "WebFetch(domain:pricelist.dit.go.th)",
+      "Read(//mnt/c/Users/notap/OneDrive/Desktop/Vibe code project/**)",
+      "Bash(node scripts/fetch-eggs-manual.js)",
+      "Bash(node --use-system-ca scripts/fetch-eggs-manual.js)",
+      "Bash(node *)",
+      "Bash(awk 'NR==1 || NR==20 || NR==40 || NR==60 || NR==80 || NR==87')",
+      "Read(//c/c/Users/notap/OneDrive/Desktop/Vibe code project/**)",
+      "Bash(python3 *)"
+    ]
+  }
+}

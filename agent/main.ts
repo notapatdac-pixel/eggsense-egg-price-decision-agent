@@ -14,7 +14,7 @@ import type { PlannerOutput } from "@/agent/planner"
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 
-const MODEL = "gemini-2.5-flash"
+const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash-8b"]
 
 // Retries transient errors (503, network) within the same model before giving up.
 async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
@@ -35,7 +35,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
 // -- Tool execution --------------------------------------------
 
 async function exec(name: string, args: Record<string, unknown>, profile: AiProfile | null): Promise<unknown> {
-  const off = (g: number) => parseFloat(String((profile as unknown as Record<string, unknown>)?.[`price_offset_g${g}`] ?? 0)) || 0
+  const off = (g: number) => getOffset(profile, g as Grade)
   try {
     if (name === "get_current_prices") {
       const g = args.grade as number
@@ -54,18 +54,25 @@ async function exec(name: string, args: Record<string, unknown>, profile: AiProf
     }
     if (name === "get_price_forecast") {
       const g = args.grade as Grade
-      const { forecast, signals } = await computeForecastWithSignals(g, 14, off(g))
+      const userOff = off(g)
+      const [{ forecast, signals }, ditToday] = await Promise.all([
+        computeForecastWithSignals(g, 14, userOff),
+        getLatestEggPrice(g as Grade),
+      ])
       const p0 = forecast[0]?.price ?? null
       const p7 = forecast[6]?.price ?? null
       const p14 = forecast[13]?.price ?? null
       return {
         grade: g,
-        price_now:  p0,
-        price_7d:   p7,
-        price_14d:  p14,
+        // dit_price_today = official DIT price from DB (no user offset). Use this when mentioning "DIT today".
+        dit_price_today: ditToday,
+        // your_price_today = what the user actually pays today (DIT + their supplier premium).
+        your_price_today: userOff !== 0 ? Math.round((ditToday + userOff) * 100) / 100 : null,
+        // Forecast prices below already include the user's supplier offset.
+        your_forecast_price_7d:  p7,
+        your_forecast_price_14d: p14,
         change_7d_pct:  p0 && p7  ? Math.round(((p7  - p0) / p0) * 1000) / 10 : null,
         change_14d_pct: p0 && p14 ? Math.round(((p14 - p0) / p0) * 1000) / 10 : null,
-        offset_applied: off(g),
         market_signals: signals,
       }
     }
@@ -115,7 +122,7 @@ function summariseTool(name: string, args: Record<string, unknown>, result: unkn
     case "get_price_forecast": {
       const ch = r.change_7d_pct as number | null
       const dir = ch == null ? "" : ch > 0 ? ` (+${ch}% in 7d)` : ch < 0 ? ` (${ch}% in 7d)` : " (stable)"
-      return `Grade ${r.grade}: ฿${r.price_now} now → ฿${r.price_7d} (7d) → ฿${r.price_14d} (14d)${dir}`
+      return `Grade ${r.grade}: DIT ฿${r.dit_price_today} → 7d ฿${r.your_forecast_price_7d} → 14d ฿${r.your_forecast_price_14d}${dir}`
     }
     case "get_market_news": {
       const items = Array.isArray(r.items) ? r.items as Array<{ category: string }> : []
@@ -231,9 +238,12 @@ async function runWithModel(
     const m = text.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`))
     if (!m) return null
     try {
+      // Gemini sometimes wraps JSON in ```json...``` — strip fences before parsing
+      const json = m[1].trim().replace(/^```[a-z]*\n?|\n?```$/gm, "").trim()
       text = text.replace(m[0], "").trim()
-      return JSON.parse(m[1].trim()) as T
-    } catch {
+      return JSON.parse(json) as T
+    } catch (e) {
+      console.warn(`[parseTag] <${tag}> JSON parse failed:`, m[1].slice(0, 120), String(e))
       return null
     }
   }
@@ -243,16 +253,7 @@ async function runWithModel(
   out.suggestedQuestions = parseTag<string[]>("suggested_questions")
   out.text = text.trim()
 
-  if (out.profileUpdate) {
-    for (let g = 0; g <= 5; g++) {
-      const pk = `personal_price_g${g}` as keyof AiProfile
-      if (out.profileUpdate[pk] != null) {
-        const dit = await getLatestEggPrice(g as Grade)
-        ;(out.profileUpdate as Record<string, unknown>)[`price_offset_g${g}`] =
-          Math.round((parseFloat(String(out.profileUpdate[pk])) - dit) * 10000) / 10000
-      }
-    }
-  }
+  // Offset computation is handled inside upsertAiProfile — no need to pre-compute here.
 
   if (inventoryCard != null) {
     const card = inventoryCard as InventoryResult
@@ -282,7 +283,38 @@ export async function runAgentTurn(
     parts: [{ text: m.content }],
   }))
   const firstUser = raw.findIndex((m) => m.role === "user")
-  const gemHist   = firstUser === -1 ? [] : firstUser > 0 ? raw.slice(firstUser) : raw
+  const trimmed   = firstUser === -1 ? [] : firstUser > 0 ? raw.slice(firstUser) : raw
 
-  return runWithModel(MODEL, gemHist, message, profile, rag, planner, gemHist.length)
+  // Drop trailing user turns — orphaned messages from a prior failed response
+  // would create consecutive user turns when the new message is sent, which Gemini rejects.
+  while (trimmed.length > 0 && trimmed[trimmed.length - 1].role === "user") {
+    trimmed.pop()
+  }
+
+  // Collapse consecutive same-role turns — Gemini requires strict user/model alternation.
+  // Keep the LAST message when two adjacent messages have the same role.
+  const gemHist: Content[] = []
+  for (const msg of trimmed) {
+    const last = gemHist[gemHist.length - 1]
+    if (last?.role === msg.role) {
+      gemHist[gemHist.length - 1] = msg
+    } else {
+      gemHist.push(msg)
+    }
+  }
+
+  let lastErr: unknown
+  for (const modelId of MODELS) {
+    try {
+      return await runWithModel(modelId, gemHist, message, profile, rag, planner, gemHist.length)
+    } catch (e) {
+      const msg = String((e as { message?: string }).message ?? e)
+      const status = (e as { status?: number }).status
+      const tryNext = status === 503 || status === 429 || msg.includes("503") || msg.includes("429")
+      if (!tryNext) throw e
+      lastErr = e
+      console.warn(`[agent] ${modelId} unavailable (${status ?? "?"}), trying next model`)
+    }
+  }
+  throw lastErr
 }

@@ -14,7 +14,7 @@ export const TOOLS: FunctionDeclaration[] = [
   },
   {
     name: "get_price_forecast",
-    description: "Get 14-day egg price forecast. Returns price_now, price_7d, price_14d, change_7d_pct, change_14d_pct, and market_signals: { market_trend_pct_per_day, oil_momentum_pct, feed_momentum_pct, temp_state, disease_active, demand_shock, supply_shock, news_sentiment ('bullish'|'neutral'|'bearish'), top_news }. Use change_7d_pct and change_14d_pct to state price direction, then use market_signals to reason WHY. Never quote raw field names or signal scores to the user.",
+    description: "Get 14-day egg price forecast. Returns: dit_price_today (official DIT price from DB — use this as 'DIT today'), your_price_today (user's actual purchase price = DIT + their supplier offset, null if no offset set), your_forecast_price_7d and your_forecast_price_14d (user's expected prices including supplier offset), change_7d_pct, change_14d_pct, and market_signals. IMPORTANT: dit_price_today is the official DIT — always use this when saying 'ราคา DIT วันนี้'. your_price_today is what the user actually pays. Never confuse the two. Use change_7d_pct and change_14d_pct to state price direction, then use market_signals to reason WHY.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {

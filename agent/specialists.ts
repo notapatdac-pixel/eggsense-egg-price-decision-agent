@@ -97,7 +97,7 @@ Required workflow:
     displayName: "Inventory Optimizer",
     icon: "📦",
     temperature: 0.35,
-    allowedTools: ["calculate_inventory", "get_current_prices", "get_price_forecast"],
+    allowedTools: ["calculate_inventory", "get_current_prices", "get_price_forecast", "get_market_context"],
     focusBlock: `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SPECIALIST: INVENTORY OPTIMIZER
