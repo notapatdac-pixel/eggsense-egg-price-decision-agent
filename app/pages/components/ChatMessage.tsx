@@ -118,8 +118,8 @@ export function ChatMessage({ msg, initial }: { msg: Msg; initial: string }) {
   if (msg.role === "user")
     return (
       <div className="flex justify-end items-end gap-2.5 mb-4 px-1">
-        <div className="max-w-[76%]">
-          <div className="bg-primary text-white px-4 py-3 text-[14px] leading-relaxed" style={{ borderRadius: "16px 4px 16px 16px" }}>
+        <div className="max-w-[88%] sm:max-w-[76%]">
+          <div className="bg-primary text-white px-3 py-2.5 sm:px-4 sm:py-3 text-[14px] leading-relaxed" style={{ borderRadius: "16px 4px 16px 16px" }}>
             {msg.content}
           </div>
           <p className="text-[11px] text-[#B0AAA2] text-right mt-1">{msg.timestamp ?? ""}</p>
@@ -132,9 +132,9 @@ export function ChatMessage({ msg, initial }: { msg: Msg; initial: string }) {
   return (
     <div className="flex items-start gap-2.5 mb-4 px-1">
       <div className="w-9 h-9 rounded-full bg-[#3D3830] flex items-center justify-center text-base flex-shrink-0 mt-0.5">🥚</div>
-      <div className="max-w-[76%]">
+      <div className="max-w-[88%] sm:max-w-[76%]">
         <div
-          className="bg-white text-[#3D3830] px-4 py-3 text-[14px] leading-relaxed border border-[#E5DDD4] shadow-sm"
+          className="bg-white text-[#3D3830] px-3 py-2.5 sm:px-4 sm:py-3 text-[14px] leading-relaxed border border-[#E5DDD4] shadow-sm"
           style={{ borderRadius: "4px 16px 16px 16px" }}
         >
           <MdContent text={msg.content} />

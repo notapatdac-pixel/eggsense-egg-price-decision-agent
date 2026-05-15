@@ -15,7 +15,10 @@
       "Bash(node *)",
       "Bash(awk 'NR==1 || NR==20 || NR==40 || NR==60 || NR==80 || NR==87')",
       "Read(//c/c/Users/notap/OneDrive/Desktop/Vibe code project/**)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(Get-ChildItem *)",
+      "Bash(Sort-Object)",
+      "Bash(npx tsc *)"
     ]
   }
 }

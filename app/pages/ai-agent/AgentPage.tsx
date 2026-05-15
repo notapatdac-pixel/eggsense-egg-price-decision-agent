@@ -124,7 +124,7 @@ export default function AgentPage({
               🥚
             </div>
             <div
-              className="bg-white text-[#3D3830] px-4 py-3 text-[14px] leading-relaxed border border-[#E5DDD4] shadow-sm max-w-[76%]"
+              className="bg-white text-[#3D3830] px-3 py-2.5 sm:px-4 sm:py-3 text-[14px] leading-relaxed border border-[#E5DDD4] shadow-sm max-w-[88%] sm:max-w-[76%]"
               style={{ borderRadius: "4px 16px 16px 16px" }}
             >
               สวัสดีครับ ผม EggSense AI ช่วยให้คุณตัดสินใจซื้อไข่ได้ฉลาดขึ้น ด้วยราคา DIT แบบ real-time
@@ -161,13 +161,13 @@ export default function AgentPage({
         <div ref={bottomRef} />
       </div>
 
-      <div className="flex gap-2 flex-wrap pt-3 pb-2">
+      <div className="flex gap-2 overflow-x-auto pb-1 pt-3 scrollbar-none" style={{ scrollbarWidth: "none" }}>
         {chips.map((chip, i) => (
           <button
             key={i}
             onClick={() => send(chip)}
             disabled={sending}
-            className="px-4 py-2 text-[13px] border border-[#DDD7CE] rounded-full text-[#3D3830] hover:bg-[#F5F0EB] transition-colors disabled:opacity-50"
+            className="flex-shrink-0 px-4 py-2 text-[13px] border border-[#DDD7CE] rounded-full text-[#3D3830] hover:bg-[#F5F0EB] transition-colors disabled:opacity-50"
           >
             {chip}
           </button>

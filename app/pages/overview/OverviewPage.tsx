@@ -43,7 +43,7 @@ export default function OverviewPage({ grades }: { grades: GradePrice[] }) {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-6 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
         {grades.map((g) => (
           <button
             key={g.grade}
@@ -56,9 +56,9 @@ export default function OverviewPage({ grades }: { grades: GradePrice[] }) {
       </div>
 
       <div className="card p-5">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
           <h3 className="text-[16px] font-bold text-[#1A1A1A]">Price History & Forecast</h3>
-          <div className="flex gap-1">
+          <div className="flex gap-1 flex-wrap">
             {GRADES.map((g) => (
               <button
                 key={g}
@@ -92,7 +92,7 @@ export default function OverviewPage({ grades }: { grades: GradePrice[] }) {
       <div>
         <h3 className="text-[16px] font-bold text-[#1A1A1A] mb-3">Market News</h3>
         {newsLoading ? (
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[0, 1, 2, 3].map((i) => (
               <div key={i} className="card h-[220px] animate-pulse bg-[#F5F0EB]" />
             ))}
@@ -101,7 +101,7 @@ export default function OverviewPage({ grades }: { grades: GradePrice[] }) {
           <p className="text-[13px] text-[#9E9890]">No news available.</p>
         ) : (
           <>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {allNews.slice(0, visibleCount).map((n, i) => (
                 <NewsCard key={i} item={n} />
               ))}

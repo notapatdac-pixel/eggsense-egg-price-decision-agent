@@ -147,7 +147,7 @@ export default function ProfilePage({ profile }: { profile: AiProfile | null }) 
       </div>
 
       {/* Top KPI cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {topKpis.map(({ icon: Icon, iconBg, iconColor, label, value }) => (
           <div key={label} className="card p-5">
             <div className="flex items-center gap-3 mb-4">
@@ -162,7 +162,7 @@ export default function ProfilePage({ profile }: { profile: AiProfile | null }) 
       </div>
 
       {/* Bottom KPI cards */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {bottomKpis.map(({ icon: Icon, iconBg, iconColor, label, value }) => (
           <div key={label} className="card p-4">
             <div className="flex items-center gap-2 mb-3">
@@ -178,7 +178,7 @@ export default function ProfilePage({ profile }: { profile: AiProfile | null }) 
 
       {/* Forecast chart */}
       <div className="card p-5">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
           <div>
             <h3 className="text-[16px] font-bold text-[#1A1A1A]">Individual Forecast</h3>
             {hasPersonalPrice && gradeOffset !== 0 && (
@@ -187,7 +187,7 @@ export default function ProfilePage({ profile }: { profile: AiProfile | null }) 
               </p>
             )}
           </div>
-          <div className="flex gap-1">
+          <div className="flex gap-1 flex-wrap justify-end">
             {GRADES.map((g) => {
               const gradeHasPrice = profileRaw?.[`personal_price_g${g}`] != null
               return (
@@ -247,7 +247,7 @@ export default function ProfilePage({ profile }: { profile: AiProfile | null }) 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Topic breakdown */}
             {topicStats.length > 0 && (
               <div>
@@ -300,7 +300,7 @@ export default function ProfilePage({ profile }: { profile: AiProfile | null }) 
       )}
 
       {/* Price KPI cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="card p-5">
           <p className="text-[11px] font-semibold text-[#9E9890] uppercase tracking-[0.06em] mb-2">
             {hasPersonalPrice ? "Your Price Today" : "Today's DIT Price"}

@@ -35,3 +35,12 @@ body {
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #c8c2bb; border-radius: 2px; }
+
+/* iOS safe area for bottom nav */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  height: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Prevent text size inflation on mobile */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }

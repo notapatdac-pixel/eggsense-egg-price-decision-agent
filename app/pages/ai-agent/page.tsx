@@ -35,7 +35,7 @@ export default async function AiAgent() {
 
   return (
     <DashboardShell email={user.email ?? ""}>
-      <div className="flex flex-col h-[calc(100vh-56px)]">
+      <div className="flex flex-col h-[calc(100dvh-96px)] md:h-[calc(100vh-56px)]">
         <PageHeader title="AI Agent" email={user.email ?? ""} />
         <AgentPage
           initialHistory={history}

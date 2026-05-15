@@ -20,7 +20,7 @@ export default function Sidebar({ email }: { email: string }) {
     router.refresh()
   }
   return (
-    <aside className="fixed left-0 top-0 h-screen w-44 bg-white border-r border-[#DDD7CE] flex flex-col z-20">
+    <aside className="hidden md:flex fixed left-0 top-0 h-screen w-44 bg-white border-r border-[#DDD7CE] flex-col z-20">
       <div className="flex items-center gap-2.5 px-4 py-5 border-b border-[#EDE8DF]">
         <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-base flex-shrink-0">🥚</div>
         <span className="text-[17px] font-extrabold text-[#1A1A1A] tracking-tight">EggSense</span>
